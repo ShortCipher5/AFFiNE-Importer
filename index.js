@@ -37,12 +37,22 @@ const isMac = (os.platform() === 'darwin');
   // functions
 
   async function run(){
+    console.log('Browser init: heading to ' + process.env.TARGET_URL)
     await page.goto('http://' + process.env.TARGET_URL);
-    await newWorkspace(process.env.WORKSPACE_NAME);
+
+    console.log('Creating new workspace: ' + process.env.WORKSPACE_NAME)
+    //await newWorkspace(process.env.WORKSPACE_NAME);
+
     // calls newPage for each file in the directory
+    console.log('Being processing files')
     await processFiles()
+
+    console.log('Attempting to login to AFFiNE')
     await login()
+
+    console.log('Attempting to publish workspace')
     await publish()
+
     if(!debug){
       await browser.close();
     }
@@ -71,6 +81,7 @@ const isMac = (os.platform() === 'darwin');
   }
 
   async function newPage(pageTitle, pageContent){
+
     // create new page
     await selectorFunction('[data-testid=sliderBar] > div:has-text("New Page")');
 
@@ -89,17 +100,22 @@ const isMac = (os.platform() === 'darwin');
       document.body.removeChild(textarea);
     }, pageContent);
 
-    // fill page title
-    await page.fill(".affine-default-page-block-title-container textarea", pageTitle);
-    //await page.keyboard.press('Enter');
-    await selectorFunction('.affine-block-children-container');
+    // give time for the clipboard to be updated
+    await new Promise(resolve => setTimeout(resolve, 500));
+
+    // fill the title
+    await page.getByPlaceholder('Title').fill(pageTitle);
+    await page.getByRole('paragraph').click();
+
+    // paste the contents
     const modifier = isMac ? 'Meta' : 'Control';
     await page.keyboard.press(`${modifier}+KeyV`);
 
-    // fill page content
+    /* type unreliable, so use clipboard
     //await selectorFunction('.affine-block-children-container');
     //await page.type(".affine-block-children-container", pageContent);
-
+    */
+   
     if(debug){
       await new Promise(resolve => setTimeout(resolve, 5000));
     }
@@ -133,6 +149,7 @@ const isMac = (os.platform() === 'darwin');
 
     // enable affine cloud, if necessary
     if(await page.$('span:has-text("Enable AFFiNE Cloud")')) {
+      console.log("Enabling AFFiNE Cloud on workspace")
       await selectorFunction('button:has-text("Enable")');
       await page.waitForSelector('[role="presentation"]');
       await selectorFunction('div[tabindex="-1"] button:has-text("Enable")');
@@ -145,6 +162,7 @@ const isMac = (os.platform() === 'darwin');
       
     // publish to web, if necessary
     if(await page.$("span:has-text('Publish to web')")) {
+      console.log("Publishing workspace")
       await selectorFunction('button:has(span:has-text("Publish to web"))');
       await selectorFunction('[data-setting-tab-button="Publish"]');
 
@@ -154,6 +172,7 @@ const isMac = (os.platform() === 'darwin');
     }
 
     // get workspace public url
+    console.log("Getting public URL")
     const input = await page.$('input[value^="app.affine.pro"]');
     const value = await input.evaluate((el) => el.value);
     const PUBLIC_WORKSPACE_URL = value;
@@ -221,13 +240,16 @@ const isMac = (os.platform() === 'darwin');
       await new Promise(resolve => setTimeout(resolve, 100));
     }
   
-    throw new Error(`Timed out waiting for element with selector ${selector}`);
+    //throw new Error(`Timed out waiting for element with selector ${selector}`);
+    console.error('AFFiNE Cloud may not have activated, forcing a refresh to try to continue')
+    await page.reload();
   }
   
   const processFile = async (fileName) => {
     const filePath = path.join(dirPath, fileName);
     const title = path.parse(fileName).name;
     const content = fs.readFileSync(filePath, 'utf8');
+    console.log(`Processing file： ${fileName}`);
     await newPage(title, content);
   };
 
