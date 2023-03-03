@@ -41,7 +41,7 @@ const isMac = (os.platform() === 'darwin');
     await page.goto('http://' + process.env.TARGET_URL);
 
     console.log('Creating new workspace: ' + process.env.WORKSPACE_NAME)
-    //await newWorkspace(process.env.WORKSPACE_NAME);
+    await newWorkspace(process.env.WORKSPACE_NAME);
 
     // calls newPage for each file in the directory
     console.log('Being processing files')
@@ -105,11 +105,15 @@ const isMac = (os.platform() === 'darwin');
 
     // fill the title
     await page.getByPlaceholder('Title').fill(pageTitle);
-    await page.getByRole('paragraph').click();
+    //await page.getByRole('paragraph').click();
+    await selectorFunction('.affine-block-children-container');
 
     // paste the contents
     const modifier = isMac ? 'Meta' : 'Control';
     await page.keyboard.press(`${modifier}+KeyV`);
+
+    // give time for the content to be pasted
+    await new Promise(resolve => setTimeout(resolve, 1500));
 
     /* type unreliable, so use clipboard
     //await selectorFunction('.affine-block-children-container');
